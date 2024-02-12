@@ -1,0 +1,46 @@
+
+
+processor AudioGrab  [[ main ]]
+{
+    input stream float in;
+    output stream float out;
+    input value float frequency [[ name: "Frequency", min: 15.0f, max: 1000.0f, init: 330.0f ]];
+    input value float volume [[ name: "Volume", min: 0.0f, max: 0.2f, init: 0.03f ]];
+
+    input event int saveFile;
+
+    //output stream float64 outOther;
+
+    event saveFile(int x) {
+        //console <- "This is the way. buffer[0]: " <- buffer[0];
+        // console <- `This is the way. buffer[0]: ${buffer[0]}`;
+        //frequency = frequency * 2.0f;
+    }
+    // This is our processor's entry-point function, which is invoked
+    // by the system
+    void main()
+    {
+        loop
+        {
+            //out <- vol * sin (phase);
+            //out <- volume * sin (phase);
+            // let phaseDelta = float (frequency * processor.period * twoPi);
+            // phase = addModulo2Pi (phase, phaseDelta);
+            // buffer[pos] = in;
+            // ++pos;
+
+            out <- in;
+
+            // This kills the speakers
+            //outOther <- float64(in);
+
+            advance();
+        }
+    }
+
+    //let volume = 0.15f;
+    // float phase;
+    // let bufferSize = 100;
+    // float[bufferSize] buffer;
+    // wrap<bufferSize> pos;
+}
