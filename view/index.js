@@ -12,7 +12,8 @@
 //     //memoryInitializerPrefixURL: "../vendor/",
 //     TOTAL_MEMORY: 1073741824,
 //   }
-//import * as lame from './Mp3LameEncoder.js';
+
+//https://github.com/higuma/mp3-lame-encoder-js
 import * as lame from './Mp3LameEncoder.js';
 
 function log(message) {
@@ -47,17 +48,12 @@ function writeBlob(filename, blob) {
     document.body.appendChild(elem);
     elem.click();        
     document.body.removeChild(elem);
-    log("Wrote file: " + filename);
+    // log("Wrote file: " + filename);
+    log("Wrote file.");
 }
 
-function saveFile(filename, data) {
-    const blob = new Blob([data], {type: 'audio/wav'}); //'text/csv'
-    // if(window.navigator.msSaveOrOpenBlob) {
-    //     log("Existed: window.navigator.msSaveOrOpenBlob");
-    //     window.navigator.msSaveBlob(blob, filename);
-    //     return;
-    // }
-    //log("Did not exist: window.navigator.msSaveOrOpenBlob");
+function saveFileWAV(filename, data) {
+    const blob = new Blob([data], {type: 'audio/wav'});
     writeBlob(filename, blob);
 }
 
@@ -65,19 +61,12 @@ function saveFileMP3(filename, data) {
     let sampleRate = 44100;
     let bitRate = 128;
 
-    
     let encoder = new Mp3LameEncoder(sampleRate, bitRate);
     encoder.encode([data, data]); // Left and right channels will be identical
-    let blob = encoder.finish(["audio/mpeg"]);
-    // let blob = encoder.finish(["audio/mp3"]);
-    //encoder.cancel()
+    let blob = encoder.finish(["audio/mpeg"]); //"audio/mp3"
     writeBlob(filename, blob);
 }
 
-/*
-    This simple web component just manually creates a set of plain sliders for the
-    known parameters, and uses some listeners to connect them to the patch.
-*/
 class AudioGrab_View extends HTMLElement
 {    constructor (patchConnection)
     {
@@ -95,6 +84,7 @@ class AudioGrab_View extends HTMLElement
         this.FLOAT32_VIEW = new Float32Array( 1 );
     }
 
+    // This was just an experiment based on a hunch
     float64ToFloat32( x ) {
         this.FLOAT32_VIEW[ 0 ] = x;
         return this.FLOAT32_VIEW[ 0 ];
@@ -103,25 +93,9 @@ class AudioGrab_View extends HTMLElement
     connectedCallback()
     {
         this.audioData = Array(this.audioDataLength).fill(0);
-        // When the HTMLElement is shown, this is a good place to connect
-        // any listeners you need to the PatchConnection object..
-        console.log("!!! Testing log");
-        // First, find our frequency slider:
-        const freqSlider = this.querySelector ("#frequency");
-
-        // When the slider is moved, this will cause the new value to be sent to the patch:
-        freqSlider.oninput = () => this.patchConnection.sendEventOrValue (freqSlider.id, freqSlider.value);
-
-        // Create a listener for the frequency endpoint, so that when it changes, we update our slider..
-        this.freqListener = value => freqSlider.value = value;
-        this.patchConnection.addParameterListener (freqSlider.id, this.freqListener);
-
-        // Now request an initial update, to get our slider to show the correct starting value:
-        this.patchConnection.requestParameterValue (freqSlider.id);
 
         //this.querySelector ("#saveFile1").onclick = () => { this.patchConnection.sendEventOrValue ("saveFile", 0); };
-        this.querySelector ("#saveFile1").onclick = () => { 
-            let sampleRate = 44100; // todo: get this properly
+        this.querySelector ("#saveFile1").onclick = () => {
             // let fileName = "test01.wav";
             let fileName = "test01.mp3";
 
@@ -131,40 +105,32 @@ class AudioGrab_View extends HTMLElement
             //     console.log(fileName);
             // });
 
-            //saveFile(fileName, {"this": "is", "a": "test"});
+            //saveFileWAV(fileName, {"this": "is", "a": "test"});
             saveFileMP3(fileName, this.audioData);
         };
         
-        let granularity = undefined;
-        let sendFullAudioData = true;
-        // This can be used to receive an audiostream from the patch
-        //this.patchConnection.addEndpointListener (endpointID, listener, granularity)
-        this.patchConnection.addEndpointListener ("outOther", (output) => {
+        this.outputListener = (output) => {
             let data = output.data[0];
             for(let i = 0; i < data.length; i++) {
-                // var f32 = this.float64ToFloat32(data[i]);
-                this.audioData[this.audioDataIndex] = data[i];
+                var samp = data[i];
+                // var samp = this.float64ToFloat32(data[i]);
+                this.audioData[this.audioDataIndex] = samp;
                 this.audioDataIndex = (this.audioDataIndex + 1) % this.audioDataLength;
             }
+        };
 
-            // if (this.counter++ > 300) {
-            //     this.counter = 0;
-            //     //console.log("! output: " + output);
-            //     //console.log("! data: " + data);
-            //     //console.log("! Array.isArray(data): " + Array.isArray(data));
-            //     //loopThroughJSON(data);
+        let granularity = undefined;
+        let sendFullAudioData = true;
 
-            //     //console.log("data.length: " + data.length); 
-            //     log("this.audioData[this.audioDataIndex - 1]: " + this.audioData[this.audioDataIndex - 1]);
-            // }
-        }, granularity, sendFullAudioData);
+        this.patchConnection.addEndpointListener ("out", this.outputListener, granularity, sendFullAudioData);
     }
 
     disconnectedCallback()
     {
         // When our element is removed, this is a good place to remove
         // any listeners that you may have added to the PatchConnection object.
-        this.patchConnection.removeParameterListener ("frequency", this.freqListener);
+        this.patchConnection.removeParameterListener("frequency", this.freqListener);
+        this.patchConnection.removeEndpointListener("out", this.outputListener);
     }
 
     getHTML()
@@ -206,7 +172,7 @@ class AudioGrab_View extends HTMLElement
         <div id="controls">
           <p>Your GUI goes here!</p>
           <input type="button" id="saveFile1" value="Save File"></input>
-          <input type="range" class="param" id="frequency" min="5" max="1000">Frequency</input>
+          <!-- <input type="range" class="param" id="frequency" min="5" max="1000">Frequency</input> -->
         </div>`;
     }
 }
@@ -214,15 +180,8 @@ class AudioGrab_View extends HTMLElement
 // todo: let them know of this uppercase error so they can fix it
 window.customElements.define ("audiograb-view", AudioGrab_View);
 
-console.log("! GOGO");
+console.log("Loaded index.js script.");
 
-/* This is the function that a host (the command line patch player, or a Cmajor plugin
-   loader, or our VScode extension, etc) will call in order to create a view for your patch.
-
-   Ultimately, a DOM element must be returned to the caller for it to append to its document.
-   However, this function can be `async` if you need to perform asyncronous tasks, such as
-   fetching remote resources for use in the view, before completing.
-*/
 export default function createPatchView (patchConnection)
 {
     return new AudioGrab_View (patchConnection);

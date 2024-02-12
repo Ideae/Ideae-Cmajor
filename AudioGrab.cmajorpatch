@@ -8,10 +8,7 @@
     "category":         "generator",
     "manufacturer":     "Your Company Goes Here",
     "isInstrument":     true,
-
     "source":           "AudioGrab.cmajor",
-    "worker":           "worker.js",
-
     "view":             { "src": "view/index.js",
                           "width": 500,
                           "height": 300,
